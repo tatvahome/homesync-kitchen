@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, ArrowRight, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/homesync/app-shell";
 import { ReminderCard } from "@/components/homesync/reminder-card";
 import { StatusDot, statusLabel } from "@/components/homesync/status-dot";
-import { usePantry } from "@/components/homesync/store";
-import { MOCK_ACTIVITY, MOCK_NUDGES } from "@/lib/mock-data";
+import { usePantryItems, useActivity, useNudges } from "@/hooks/use-pantry";
+import { useSetting } from "@/hooks/use-setting";
+import { confirmStillGood, consumeItem, SETTING_KEYS } from "@/lib/db";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,18 +28,28 @@ function greeting() {
 }
 
 function HomePage() {
-  const { items, consume, clear, reset } = usePantry();
-  const [dismissedNudges, setDismissedNudges] = useState<string[]>([]);
+  const items = usePantryItems();
+  const activity = useActivity(4);
+  const [reminderDaysStr] = useSetting(SETTING_KEYS.reminderDays, "3");
+  const nudges = useNudges(Number(reminderDaysStr) || 3);
   const [bannerHidden, setBannerHidden] = useState(false);
+  const [today, setToday] = useState("");
+  useEffect(() => {
+    setToday(
+      new Date().toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }),
+    );
+  }, []);
 
-  const alerts = items
+  const list = items ?? [];
+  const alerts = list
     .filter(i => i.status !== "fresh")
     .sort((a, b) => a.daysLeft - b.daysLeft)
     .slice(0, 3);
-
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-  const isEmpty = items.length === 0;
-  const nudges = MOCK_NUDGES.filter(n => !dismissedNudges.includes(n.id));
+  const isEmpty = items !== undefined && list.length === 0;
 
   return (
     <AppShell pulseFab={isEmpty}>
@@ -50,15 +61,15 @@ function HomePage() {
       </header>
 
       {isEmpty ? (
-        <EmptyState onReset={reset} />
+        <EmptyState />
       ) : (
         <div className="space-y-7 px-5">
-          {!bannerHidden && items.length <= 3 && (
+          {!bannerHidden && list.length > 0 && list.length <= 3 && (
             <button
               onClick={() => setBannerHidden(true)}
               className="w-full rounded-2xl bg-primary/10 px-4 py-3 text-left text-sm text-primary"
             >
-              🌱 Welcome to homeSync — {items.length} item{items.length === 1 ? "" : "s"} tracked
+              🌱 {list.length} item{list.length === 1 ? "" : "s"} tracked
               <span className="float-right text-xs opacity-60">dismiss</span>
             </button>
           )}
@@ -72,8 +83,8 @@ function HomePage() {
                     key={n.id}
                     emoji={n.emoji}
                     message={n.message}
-                    onYes={() => setDismissedNudges(d => [...d, n.id])}
-                    onNo={() => setDismissedNudges(d => [...d, n.id])}
+                    onYes={() => void confirmStillGood(n.id)}
+                    onNo={() => void consumeItem(n.id, "discarded")}
                   />
                 ))}
               </div>
@@ -112,7 +123,7 @@ function HomePage() {
                       {statusLabel(a.daysLeft)}
                     </div>
                     <button
-                      onClick={() => consume(a.id)}
+                      onClick={() => void consumeItem(a.id)}
                       className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
                       aria-label="Consume"
                     >
@@ -126,8 +137,13 @@ function HomePage() {
 
           <section>
             <SectionTitle>Recent activity</SectionTitle>
-            <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card shadow-soft">
-              {MOCK_ACTIVITY.map(a => (
+            {activity.length === 0 ? (
+              <p className="mt-3 rounded-2xl bg-card p-4 text-sm text-muted-foreground shadow-soft">
+                No activity yet — your first scan will show up here.
+              </p>
+            ) : (
+              <ul className="mt-3 divide-y divide-border/60 rounded-2xl bg-card shadow-soft">
+                {activity.map(a => (
                 <li key={a.id} className="flex items-center gap-3 px-4 py-3">
                   <span
                     className={
@@ -142,15 +158,9 @@ function HomePage() {
                   <span className="text-xs text-muted-foreground">{a.when}</span>
                 </li>
               ))}
-            </ul>
+              </ul>
+            )}
           </section>
-
-          <button
-            onClick={clear}
-            className="mx-auto block text-xs text-muted-foreground/70 underline-offset-2 hover:underline"
-          >
-            Demo: clear pantry to see empty state
-          </button>
         </div>
       )}
     </AppShell>
@@ -165,7 +175,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function EmptyState({ onReset }: { onReset: () => void }) {
+function EmptyState() {
   return (
     <div className="mx-5 mt-10 flex flex-col items-center rounded-3xl bg-card px-6 py-12 text-center shadow-soft">
       <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-4xl">
@@ -181,12 +191,6 @@ function EmptyState({ onReset }: { onReset: () => void }) {
       >
         <Sparkles className="h-4 w-4" /> Take First Photo
       </Link>
-      <button
-        onClick={onReset}
-        className="mt-4 text-xs text-muted-foreground underline-offset-2 hover:underline"
-      >
-        Demo: load sample items
-      </button>
     </div>
   );
 }

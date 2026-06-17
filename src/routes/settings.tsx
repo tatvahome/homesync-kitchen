@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { AppShell } from "@/components/homesync/app-shell";
 import { cn } from "@/lib/utils";
 import { Bell, Ruler, Download, KeyRound, Clock } from "lucide-react";
+import { useSetting } from "@/hooks/use-setting";
+import { SETTING_KEYS, db } from "@/lib/db";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -62,12 +63,17 @@ function Row({ icon, label, hint, right }: { icon: React.ReactNode; label: strin
 }
 
 function SettingsPage() {
-  const [reminders, setReminders] = useState(true);
-  const [push, setPush] = useState(true);
-  const [email, setEmail] = useState(false);
-  const [unit, setUnit] = useState<"kg" | "pc">("kg");
-  const [timing, setTiming] = useState("2 days before");
-  const [apiKey, setApiKey] = useState("");
+  const [reminderDays, setReminderDays] = useSetting(SETTING_KEYS.reminderDays, "3");
+  const [unit, setUnit] = useSetting(SETTING_KEYS.defaultUnit, "kg");
+  const [push, setPush] = useSetting(SETTING_KEYS.notifPush, "true");
+  const [email, setEmail] = useSetting(SETTING_KEYS.notifEmail, "false");
+  const [apiKey, setApiKey] = useSetting(SETTING_KEYS.geminiKey, "");
+
+  const clearAll = async () => {
+    if (!confirm("Clear all pantry data?")) return;
+    await db().items.clear();
+    await db().activity.clear();
+  };
 
   return (
     <AppShell showFab={false}>
@@ -81,23 +87,19 @@ function SettingsPage() {
           <Row
             icon={<Clock className="h-4 w-4" />}
             label="Reminder timing"
-            hint="When to nudge before expiry"
+            hint="Nudge after item opened for this many days"
             right={
               <select
-                value={timing}
-                onChange={e => setTiming(e.target.value)}
+                value={reminderDays}
+                onChange={e => void setReminderDays(e.target.value)}
                 className="rounded-lg bg-muted px-2 py-1.5 text-sm"
               >
-                <option>1 day before</option>
-                <option>2 days before</option>
-                <option>3 days before</option>
+                <option value="1">1 day</option>
+                <option value="2">2 days</option>
+                <option value="3">3 days</option>
+                <option value="5">5 days</option>
               </select>
             }
-          />
-          <Row
-            icon={<Bell className="h-4 w-4" />}
-            label="Daily reminders"
-            right={<Toggle on={reminders} onChange={setReminders} />}
           />
         </Section>
 
@@ -111,7 +113,7 @@ function SettingsPage() {
                 {(["kg", "pc"] as const).map(u => (
                   <button
                     key={u}
-                    onClick={() => setUnit(u)}
+                    onClick={() => void setUnit(u)}
                     className={cn(
                       "rounded-full px-3 py-1 transition",
                       unit === u ? "bg-card text-foreground shadow-soft" : "text-muted-foreground",
@@ -126,17 +128,28 @@ function SettingsPage() {
         </Section>
 
         <Section title="Notifications">
-          <Row icon={<Bell className="h-4 w-4" />} label="Push notifications" right={<Toggle on={push} onChange={setPush} />} />
-          <Row icon={<Bell className="h-4 w-4" />} label="Email digest" hint="Weekly summary" right={<Toggle on={email} onChange={setEmail} />} />
+          <Row
+            icon={<Bell className="h-4 w-4" />}
+            label="Push notifications"
+            right={<Toggle on={push === "true"} onChange={v => void setPush(String(v))} />}
+          />
+          <Row
+            icon={<Bell className="h-4 w-4" />}
+            label="Email digest"
+            hint="Weekly summary"
+            right={<Toggle on={email === "true"} onChange={v => void setEmail(String(v))} />}
+          />
         </Section>
 
         <Section title="Data">
           <Row
             icon={<Download className="h-4 w-4" />}
-            label="Export data"
-            hint="Download as CSV"
+            label="Clear local data"
+            hint="Removes all pantry items and activity"
             right={
-              <button className="rounded-lg bg-muted px-3 py-1.5 text-xs font-medium">Export</button>
+              <button onClick={clearAll} className="rounded-lg bg-muted px-3 py-1.5 text-xs font-medium">
+                Clear
+              </button>
             }
           />
         </Section>
@@ -149,15 +162,17 @@ function SettingsPage() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">Gemini API key</p>
-                <p className="text-xs text-muted-foreground">Wired up in Phase 2</p>
+                <p className="text-xs text-muted-foreground">
+                  {apiKey ? "Stored locally on this device" : "Required for scanning"}
+                </p>
               </div>
             </div>
             <input
               value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
+              onChange={e => void setApiKey(e.target.value)}
               type="password"
               placeholder="AIza…"
-              className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-secondary"
+              className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-secondary"
             />
           </div>
         </Section>
