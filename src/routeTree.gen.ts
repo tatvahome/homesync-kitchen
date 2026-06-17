@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ScanRouteImport } from './routes/scan'
 import { Route as PantryRouteImport } from './routes/pantry'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PantryRoute = PantryRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/pantry': typeof PantryRoute
+  '/scan': typeof ScanRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/pantry': typeof PantryRoute
+  '/scan': typeof ScanRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/pantry': typeof PantryRoute
+  '/scan': typeof ScanRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/pantry' | '/settings'
+  fullPaths: '/' | '/pantry' | '/scan' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/pantry' | '/settings'
-  id: '__root__' | '/' | '/pantry' | '/settings'
+  to: '/' | '/pantry' | '/scan' | '/settings'
+  id: '__root__' | '/' | '/pantry' | '/scan' | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PantryRoute: typeof PantryRoute
+  ScanRoute: typeof ScanRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pantry': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PantryRoute: PantryRoute,
+  ScanRoute: ScanRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
