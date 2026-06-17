@@ -160,5 +160,51 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
   }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 8px 24px -4px oklch(0.55 0.21 275 / 0.45), 0 0 0 0 oklch(0.55 0.21 275 / 0.4); }
+  50% { box-shadow: 0 8px 24px -4px oklch(0.55 0.21 275 / 0.55), 0 0 0 14px oklch(0.55 0.21 275 / 0); }
+}
+@utility animate-fab-pulse {
+  animation: fab-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes swipe-out-right {
+  to { transform: translateX(120%) rotate(8deg); opacity: 0; }
+}
+@utility animate-swipe-out-right {
+  animation: swipe-out-right 0.32s ease-out forwards;
+}
+@keyframes swipe-out-left {
+  to { transform: translateX(-120%) rotate(-8deg); opacity: 0; }
+}
+@utility animate-swipe-out-left {
+  animation: swipe-out-left 0.32s ease-out forwards;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@utility animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
