@@ -46,6 +46,13 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-status-fresh: var(--status-fresh);
+  --color-status-expiring: var(--status-expiring);
+  --color-status-expired: var(--status-expired);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-fab: var(--shadow-fab);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
