@@ -46,6 +46,13 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-status-fresh: var(--status-fresh);
+  --color-status-expiring: var(--status-expiring);
+  --color-status-expired: var(--status-expired);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-fab: var(--shadow-fab);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -63,25 +70,38 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --radius-lg-card: 1.25rem;
+  --background: oklch(0.995 0.003 120);
+  --foreground: oklch(0.18 0.02 240);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.18 0.02 240);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
+  --popover-foreground: oklch(0.18 0.02 240);
+  /* Primary = Emerald (positive/confirm) */
+  --primary: oklch(0.68 0.16 155);
+  --primary-foreground: oklch(0.99 0.005 150);
+  /* Secondary/CTA = Indigo */
+  --secondary: oklch(0.55 0.21 275);
+  --secondary-foreground: oklch(0.99 0.005 275);
+  --muted: oklch(0.965 0.005 250);
+  --muted-foreground: oklch(0.5 0.02 250);
+  --accent: oklch(0.95 0.02 275);
+  --accent-foreground: oklch(0.4 0.18 275);
+  --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.92 0.008 250);
+  --input: oklch(0.92 0.008 250);
+  --ring: oklch(0.55 0.21 275);
+  /* Status colors */
+  --status-fresh: oklch(0.7 0.18 150);
+  --status-expiring: oklch(0.78 0.16 75);
+  --status-expired: oklch(0.62 0.22 25);
+  /* Fonts */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Poppins", "Inter", ui-sans-serif, sans-serif;
+  /* Shadows */
+  --shadow-soft: 0 1px 2px oklch(0.18 0.02 240 / 0.04), 0 8px 24px -8px oklch(0.18 0.02 240 / 0.08);
+  --shadow-fab: 0 8px 24px -4px oklch(0.55 0.21 275 / 0.45), 0 4px 12px oklch(0.55 0.21 275 / 0.25);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -140,5 +160,51 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
   }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 8px 24px -4px oklch(0.55 0.21 275 / 0.45), 0 0 0 0 oklch(0.55 0.21 275 / 0.4); }
+  50% { box-shadow: 0 8px 24px -4px oklch(0.55 0.21 275 / 0.55), 0 0 0 14px oklch(0.55 0.21 275 / 0); }
+}
+@utility animate-fab-pulse {
+  animation: fab-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes swipe-out-right {
+  to { transform: translateX(120%) rotate(8deg); opacity: 0; }
+}
+@utility animate-swipe-out-right {
+  animation: swipe-out-right 0.32s ease-out forwards;
+}
+@keyframes swipe-out-left {
+  to { transform: translateX(-120%) rotate(-8deg); opacity: 0; }
+}
+@utility animate-swipe-out-left {
+  animation: swipe-out-left 0.32s ease-out forwards;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@utility animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
