@@ -5,7 +5,8 @@ import { SwipeableCard } from "@/components/homesync/swipeable-card";
 import { ItemCard } from "@/components/homesync/item-card";
 import { BottomSheet } from "@/components/homesync/bottom-sheet";
 import { Stepper } from "@/components/homesync/stepper";
-import { usePantry } from "@/components/homesync/store";
+import { usePantryItems } from "@/hooks/use-pantry";
+import { consumeItem, updateItem } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import type { ItemStatus, PantryItem } from "@/lib/mock-data";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -30,11 +31,14 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 function PantryPage() {
-  const { items, consume } = usePantry();
+  const items = usePantryItems() ?? [];
   const [filter, setFilter] = useState<Filter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<PantryItem | null>(null);
   const [longPressItem, setLongPressItem] = useState<PantryItem | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editQty, setEditQty] = useState(1);
+  const [editPrice, setEditPrice] = useState(0);
   const haptic = useHaptics();
 
   const filtered = useMemo(
@@ -79,16 +83,16 @@ function PantryPage() {
           filtered.map(item => (
             <SwipeableCard
               key={item.id}
-              onSwipeRight={() => consume(item.id)}
-              onSwipeLeft={() => setEditing(item)}
+              onSwipeRight={() => void consumeItem(item.id)}
+              onSwipeLeft={() => openEdit(item)}
               onLongPress={() => setLongPressItem(item)}
             >
               <ItemCard
                 item={item}
                 expanded={expandedId === item.id}
                 onToggle={() => setExpandedId(id => (id === item.id ? null : item.id))}
-                onConsume={() => consume(item.id)}
-                onEdit={() => setEditing(item)}
+                onConsume={() => void consumeItem(item.id)}
+                onEdit={() => openEdit(item)}
               />
             </SwipeableCard>
           ))
@@ -109,21 +113,27 @@ function PantryPage() {
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground">Name</label>
                 <input
-                  defaultValue={editing.name}
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
                   className="w-full border-b border-border bg-transparent pb-1 text-base font-medium outline-none focus:border-secondary"
                 />
               </div>
             </div>
             <div>
               <p className="mb-2 text-xs text-muted-foreground">Quantity</p>
-              <Stepper value={editing.quantity} onChange={() => {}} presets={[1, 2, 6, 12]} suffix={editing.unit} />
+              <Stepper value={editQty} onChange={setEditQty} presets={[1, 2, 6, 12]} suffix={editing.unit} />
             </div>
             <div>
               <p className="mb-2 text-xs text-muted-foreground">Price (₹)</p>
-              <Stepper value={editing.price} onChange={() => {}} step={5} presets={[50, 100, 200, 500]} />
+              <Stepper value={editPrice} onChange={setEditPrice} step={5} presets={[50, 100, 200, 500]} />
             </div>
             <button
-              onClick={() => setEditing(null)}
+              onClick={async () => {
+                if (editing) {
+                  await updateItem(editing.id, { name: editName, quantity: editQty, price: editPrice });
+                }
+                setEditing(null);
+              }}
               className="w-full rounded-2xl bg-secondary py-3 text-sm font-medium text-secondary-foreground"
             >
               Save changes
@@ -141,7 +151,7 @@ function PantryPage() {
           <div className="space-y-2">
             {[
               { label: "Remind me later", action: () => setLongPressItem(null) },
-              { label: "Mark as discarded", action: () => { consume(longPressItem.id); setLongPressItem(null); } },
+              { label: "Mark as discarded", action: () => { void consumeItem(longPressItem.id, "discarded"); setLongPressItem(null); } },
               { label: "Share with household", action: () => setLongPressItem(null) },
             ].map(opt => (
               <button
@@ -157,4 +167,11 @@ function PantryPage() {
       </BottomSheet>
     </AppShell>
   );
+
+  function openEdit(item: PantryItem) {
+    setEditing(item);
+    setEditName(item.name);
+    setEditQty(item.quantity);
+    setEditPrice(item.price);
+  }
 }
