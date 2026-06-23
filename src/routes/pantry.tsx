@@ -6,7 +6,7 @@ import { ItemCard } from "@/components/homesync/item-card";
 import { BottomSheet } from "@/components/homesync/bottom-sheet";
 import { Stepper } from "@/components/homesync/stepper";
 import { usePantryItems } from "@/hooks/use-pantry";
-import { consumeItem, updateItem } from "@/lib/db";
+import { consumeItem, consumePartial, updateItem } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import type { ItemStatus, PantryItem } from "@/lib/mock-data";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -36,9 +36,12 @@ function PantryPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<PantryItem | null>(null);
   const [longPressItem, setLongPressItem] = useState<PantryItem | null>(null);
+  const [consuming, setConsuming] = useState<PantryItem | null>(null);
+  const [consumeAmount, setConsumeAmount] = useState("1");
   const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState(1);
   const [editPrice, setEditPrice] = useState(0);
+  const [editDays, setEditDays] = useState(7);
   const haptic = useHaptics();
 
   const filtered = useMemo(
@@ -83,7 +86,7 @@ function PantryPage() {
           filtered.map(item => (
             <SwipeableCard
               key={item.id}
-              onSwipeRight={() => void consumeItem(item.id)}
+              onSwipeRight={() => openConsume(item)}
               onSwipeLeft={() => openEdit(item)}
               onLongPress={() => setLongPressItem(item)}
             >
@@ -91,7 +94,7 @@ function PantryPage() {
                 item={item}
                 expanded={expandedId === item.id}
                 onToggle={() => setExpandedId(id => (id === item.id ? null : item.id))}
-                onConsume={() => void consumeItem(item.id)}
+                onConsume={() => openConsume(item)}
                 onEdit={() => openEdit(item)}
               />
             </SwipeableCard>
@@ -127,10 +130,19 @@ function PantryPage() {
               <p className="mb-2 text-xs text-muted-foreground">Price (₹)</p>
               <Stepper value={editPrice} onChange={setEditPrice} step={5} presets={[50, 100, 200, 500]} />
             </div>
+            <div>
+              <p className="mb-2 text-xs text-muted-foreground">Expires in (days from now)</p>
+              <Stepper value={editDays} onChange={setEditDays} presets={[3, 7, 14, 30]} suffix="d" />
+            </div>
             <button
               onClick={async () => {
                 if (editing) {
-                  await updateItem(editing.id, { name: editName, quantity: editQty, price: editPrice });
+                  await updateItem(editing.id, {
+                    name: editName,
+                    quantity: editQty,
+                    price: editPrice,
+                    expiryEstimate: Date.now() + editDays * 86_400_000,
+                  });
                 }
                 setEditing(null);
               }}
@@ -138,6 +150,63 @@ function PantryPage() {
             >
               Save changes
             </button>
+          </div>
+        )}
+      </BottomSheet>
+
+      <BottomSheet
+        open={!!consuming}
+        onClose={() => setConsuming(null)}
+        title={consuming ? `Consume ${consuming.name}` : undefined}
+      >
+        {consuming && (
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              In stock: <span className="font-medium text-foreground tabular-nums">{consuming.quantity} {consuming.unit}</span>
+            </p>
+            <div>
+              <label className="mb-1.5 block text-xs text-muted-foreground">
+                Amount consumed ({consuming.unit})
+              </label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                value={consumeAmount}
+                onChange={e => setConsumeAmount(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-3 text-lg tabular-nums outline-none focus:border-secondary"
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[0.25, 0.5, 1, consuming.quantity].map((p, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setConsumeAmount(String(p))}
+                    className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {i === 3 ? "All" : `${p} ${consuming.unit}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { void consumeItem(consuming.id); setConsuming(null); }}
+                className="flex-1 rounded-2xl bg-muted py-3 text-sm font-medium"
+              >
+                Consume all
+              </button>
+              <button
+                onClick={async () => {
+                  const amt = Number(consumeAmount) || 0;
+                  if (amt > 0) await consumePartial(consuming.id, amt);
+                  setConsuming(null);
+                }}
+                className="flex-1 rounded-2xl bg-primary py-3 text-sm font-medium text-primary-foreground"
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         )}
       </BottomSheet>
@@ -173,5 +242,12 @@ function PantryPage() {
     setEditName(item.name);
     setEditQty(item.quantity);
     setEditPrice(item.price);
+    setEditDays(Math.max(1, item.daysLeft > 0 ? item.daysLeft : 7));
+  }
+
+  function openConsume(item: PantryItem) {
+    haptic("light");
+    setConsuming(item);
+    setConsumeAmount(String(item.quantity));
   }
 }
