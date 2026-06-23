@@ -2,7 +2,8 @@
 // directly from the browser. The API key lives in IndexedDB (see ./db.ts).
 // Free-tier friendly model: gemini-2.5-flash (multimodal, supports vision).
 
-const MODEL = "gemini-2.5-flash";
+// Gemini 3.1 Flash Lite — higher free-tier rate limits, multimodal-capable.
+const MODEL = "gemini-flash-lite-latest";
 const ENDPOINT = (key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
 
