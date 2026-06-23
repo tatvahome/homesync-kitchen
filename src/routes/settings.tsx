@@ -19,15 +19,17 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   return (
     <button
       onClick={() => onChange(!on)}
+      role="switch"
+      aria-checked={on}
       className={cn(
-        "relative h-7 w-12 rounded-full transition-colors",
+        "relative h-7 w-12 shrink-0 rounded-full transition-colors",
         on ? "bg-primary" : "bg-muted",
       )}
     >
       <span
         className={cn(
-          "absolute top-0.5 h-6 w-6 rounded-full bg-card shadow-soft transition-transform",
-          on ? "translate-x-5" : "translate-x-0.5",
+          "absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-card shadow-soft transition-transform",
+          on ? "translate-x-5" : "translate-x-0",
         )}
       />
     </button>
@@ -50,14 +52,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ icon, label, hint, right }: { icon: React.ReactNode; label: string; hint?: string; right: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
         {icon}
       </div>
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{label}</p>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-xs leading-snug text-muted-foreground">{hint}</p>}
       </div>
-      {right}
+      <div className="shrink-0">{right}</div>
     </div>
   );
 }
@@ -86,12 +88,12 @@ function SettingsPage() {
           <Row
             icon={<Clock className="h-4 w-4" />}
             label="Reminder timing"
-            hint="Nudge after item opened for this many days"
+            hint="Nudge after an item has been open this many days"
             right={
               <select
                 value={reminderDays}
                 onChange={e => void setReminderDays(e.target.value)}
-                className="rounded-lg bg-muted px-2 py-1.5 text-sm"
+                className="appearance-none rounded-lg bg-muted px-3 py-1.5 text-sm font-medium outline-none focus:ring-2 focus:ring-secondary"
               >
                 <option value="1">1 day</option>
                 <option value="2">2 days</option>
@@ -106,7 +108,7 @@ function SettingsPage() {
           <Row
             icon={<Ruler className="h-4 w-4" />}
             label="Default unit"
-            hint="Used for new pantry items"
+            hint="Pre-selected when adding a scanned item"
             right={
               <div className="flex rounded-full bg-muted p-0.5 text-xs font-medium">
                 {(["kg", "pc"] as const).map(u => (
@@ -118,7 +120,7 @@ function SettingsPage() {
                       unit === u ? "bg-card text-foreground shadow-soft" : "text-muted-foreground",
                     )}
                   >
-                    ₹/{u}
+                    {u}
                   </button>
                 ))}
               </div>
