@@ -94,14 +94,14 @@ function ScanPage() {
     if (!video || !video.videoWidth) return null;
     const canvas = canvasRef.current ?? document.createElement("canvas");
     canvasRef.current = canvas;
-    const maxW = 1024;
+    const maxW = 1280;
     const scale = Math.min(1, maxW / video.videoWidth);
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.85);
+    return canvas.toDataURL("image/jpeg", 0.92);
   }
 
   async function handleCapture() {
