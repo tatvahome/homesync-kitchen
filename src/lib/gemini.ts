@@ -80,6 +80,8 @@ async function callGemini(key: string, prompt: string, imageB64: string): Promis
         generationConfig: {
           temperature: 0.2,
           responseMimeType: "application/json",
+          maxOutputTokens: 1024,
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
@@ -104,19 +106,21 @@ async function callGemini(key: string, prompt: string, imageB64: string): Promis
   return text;
 }
 
-const SINGLE_PROMPT = `Identify the fridge/grocery product visible in this photo.
-Return STRICT JSON ONLY matching this shape:
+const SINGLE_PROMPT = `You are a fridge/grocery item identifier. Look at this photo and identify the MAIN food, drink, produce, or grocery item visible — even if packaging is partial, blurry, or only part of the item is in frame. Always make your best guess; do not refuse.
+
+Return STRICT JSON ONLY matching this shape (no markdown, no commentary):
 {
-  "name": string,           // short product name, e.g. "Greek Yogurt"
-  "brand": string|null,     // brand if clearly visible, else null
-  "category": string,       // e.g. "dairy", "produce", "meat", "beverage"
-  "emoji": string,          // single best emoji
-  "suggestedQuantity": number,
-  "suggestedUnit": string,  // e.g. "pc", "kg", "L", "g"
-  "estimatedShelfDays": number, // typical fridge shelf life from today
-  "confidence": number      // 0..1
+  "name": "short product name e.g. Greek Yogurt or Banana",
+  "brand": "brand if clearly visible, otherwise null",
+  "category": "dairy | produce | meat | beverage | bakery | condiment | frozen | pantry | other",
+  "emoji": "single best emoji for the item",
+  "suggestedQuantity": 1,
+  "suggestedUnit": "pc | kg | g | L | ml | bunch | pack",
+  "estimatedShelfDays": 7,
+  "confidence": 0.0
 }
-If no recognizable product is visible, return {"error":"no-detection"}.`;
+
+Use confidence 0.9+ when sure, 0.5-0.8 for a reasonable guess, 0.2-0.4 for a rough guess. ONLY return {"error":"no-detection"} if the image is completely black, blank, or shows zero food/grocery/packaged-good content (e.g. a wall, ceiling, person's face with no item).`;
 
 export async function scanSingleItem(key: string, imageB64: string): Promise<SingleItemResult> {
   const text = await callGemini(key, SINGLE_PROMPT, imageB64);
@@ -137,7 +141,7 @@ export async function scanSingleItem(key: string, imageB64: string): Promise<Sin
   };
 }
 
-const RECEIPT_PROMPT = `Extract every line item from this receipt/bill image.
+const RECEIPT_PROMPT = `Extract every line item from this receipt/bill/invoice image. Be generous — read partial or faded text and make your best guess for each line.
 For each line, decide whether it is plausibly a fridge or grocery item
 (produce, dairy, meat, beverages, prepared food) vs a non-fridge item
 (detergent, paper, toiletries, electronics, services). Default to true
@@ -156,7 +160,7 @@ Return STRICT JSON ONLY matching this shape:
     }
   ]
 }
-If the image is not a readable receipt, return {"error":"no-detection"}.`;
+ONLY return {"error":"no-detection"} if the image shows zero text or is clearly not a receipt/bill at all.`;
 
 export async function scanReceipt(key: string, imageB64: string): Promise<ReceiptResult> {
   const text = await callGemini(key, RECEIPT_PROMPT, imageB64);
