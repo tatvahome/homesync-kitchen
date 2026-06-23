@@ -1,9 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Loader2, RefreshCw, Sparkles, KeyRound } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { BottomSheet } from "@/components/homesync/bottom-sheet";
-import { Stepper } from "@/components/homesync/stepper";
-import { ScanResultCard } from "@/components/homesync/scan-result-card";
 import { ReceiptReview } from "@/components/homesync/receipt-review";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useSetting } from "@/hooks/use-setting";
@@ -41,15 +39,18 @@ function ScanPage() {
   const [mode, setMode] = useState<Mode>("single");
   const [stage, setStage] = useState<Stage>("camera");
   const [cameraState, setCameraState] = useState<CameraState>("idle");
-  const [editOpen, setEditOpen] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
 
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [singleResult, setSingleResult] = useState<SingleItemResult | null>(null);
   const [receiptResult, setReceiptResult] = useState<ReceiptResult | null>(null);
 
-  const [qty, setQty] = useState(1);
-  const [price, setPrice] = useState(0);
+  // Editable form state for the post-scan single-item review
+  const [formName, setFormName] = useState("");
+  const [formQty, setFormQty] = useState("1");
+  const [formUnit, setFormUnit] = useState("pc");
+  const [formPrice, setFormPrice] = useState("");
+  const [formDays, setFormDays] = useState("7");
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -127,8 +128,11 @@ function ScanPage() {
       if (mode === "single") {
         const result = await scanSingleItem(apiKey, img);
         setSingleResult(result);
-        setQty(result.suggestedQuantity);
-        setPrice(0);
+        setFormName(result.name);
+        setFormQty(String(result.suggestedQuantity ?? 1));
+        setFormUnit(result.suggestedUnit || "pc");
+        setFormPrice("");
+        setFormDays(String(result.estimatedShelfDays ?? 7));
         setStage("single-result");
         haptic("success");
       } else {
@@ -168,15 +172,18 @@ function ScanPage() {
 
   async function confirmSingle(name: string) {
     if (!singleResult || !capturedImage) return;
+    const qtyNum = Number(formQty) || 1;
+    const priceNum = Number(formPrice) || 0;
+    const daysNum = Number(formDays) || 7;
     haptic("success");
     await addItemFromScan({
       name,
       emoji: singleResult.emoji,
       thumbnail: capturedImage,
-      quantity: qty || singleResult.suggestedQuantity,
-      unit: singleResult.suggestedUnit,
-      price,
-      estimatedDays: singleResult.estimatedShelfDays,
+      quantity: qtyNum,
+      unit: formUnit,
+      price: priceNum,
+      estimatedDays: daysNum,
       category: singleResult.category,
     });
     navigate({ to: "/pantry" });
@@ -317,36 +324,105 @@ function ScanPage() {
 
       {/* Single item result */}
       {stage === "single-result" && singleResult && (
-        <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-5 text-foreground animate-fade-up">
-          <div className="mb-6 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-secondary">
-            <Sparkles className="h-3.5 w-3.5" /> Detected
+        <div className="min-h-dvh bg-background px-5 pb-10 pt-16 text-foreground animate-fade-up">
+          <div className="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-secondary">
+            <Sparkles className="h-3.5 w-3.5" /> Detected · {Math.round(singleResult.confidence * 100)}%
           </div>
-          <div className="w-full max-w-sm">
-            <ScanResultCard
-              emoji={singleResult.emoji}
-              initialName={singleResult.name}
-              confidence={singleResult.confidence}
-              onConfirm={confirmSingle}
-              onEdit={() => setEditOpen(true)}
-            />
-            {singleResult.brand && (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Brand: {singleResult.brand} · ~{singleResult.estimatedShelfDays}d shelf life
-              </p>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-muted text-5xl">
+              {singleResult.emoji}
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="text-xs text-muted-foreground">Item name</label>
+              <input
+                value={formName}
+                onChange={e => setFormName(e.target.value)}
+                className="w-full border-b border-border bg-transparent pb-1 text-lg font-semibold outline-none focus:border-secondary"
+              />
+              {singleResult.brand && (
+                <p className="mt-1 text-xs text-muted-foreground">Brand: {singleResult.brand}</p>
+              )}
+            </div>
           </div>
+
+          <div className="mt-6 space-y-5">
+            <div>
+              <label className="mb-2 block text-xs text-muted-foreground">Unit</label>
+              <div className="flex flex-wrap gap-2">
+                {["pc", "kg", "g", "L", "ml", "bunch", "pack"].map(u => (
+                  <button
+                    key={u}
+                    onClick={() => { haptic("selection"); setFormUnit(u); }}
+                    className={cn(
+                      "rounded-full px-3.5 py-1.5 text-sm font-medium transition",
+                      formUnit === u
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs text-muted-foreground">
+                  Quantity ({formUnit})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={formQty}
+                  onChange={e => setFormQty(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base tabular-nums outline-none focus:border-secondary"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs text-muted-foreground">Price (₹)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={formPrice}
+                  onChange={e => setFormPrice(e.target.value)}
+                  placeholder="0"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base tabular-nums outline-none focus:border-secondary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs text-muted-foreground">
+                Expires in (days) · AI suggested {singleResult.estimatedShelfDays}
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                value={formDays}
+                onChange={e => setFormDays(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base tabular-nums outline-none focus:border-secondary"
+              />
+            </div>
+          </div>
+
           <div className="mt-8 flex gap-3">
             <button
-              onClick={() => { setStage("camera"); }}
+              onClick={() => setStage("camera")}
               className="flex items-center gap-1.5 rounded-xl bg-muted px-4 py-2.5 text-sm font-medium"
             >
               <RefreshCw className="h-4 w-4" /> Retake
             </button>
             <button
-              onClick={() => confirmSingle(singleResult.name)}
-              className="rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground"
+              onClick={() => confirmSingle(formName)}
+              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground"
             >
-              Confirm
+              Add to pantry
             </button>
           </div>
         </div>
@@ -373,28 +449,6 @@ function ScanPage() {
         </div>
       )}
 
-      {/* Single item refine sheet */}
-      <BottomSheet open={editOpen} onClose={() => setEditOpen(false)} title="Refine details">
-        {singleResult && (
-          <div className="space-y-6">
-            <div>
-              <p className="mb-2 text-xs text-muted-foreground">Quantity</p>
-              <Stepper value={qty} onChange={setQty} presets={[1, 2, 6, 12]} suffix={singleResult.suggestedUnit} />
-            </div>
-            <div>
-              <p className="mb-2 text-xs text-muted-foreground">Price paid (₹)</p>
-              <Stepper value={price} onChange={setPrice} step={5} presets={[50, 100, 200, 500]} />
-            </div>
-            <button
-              onClick={() => { setEditOpen(false); void confirmSingle(singleResult.name); }}
-              className="w-full rounded-2xl bg-primary py-3 text-sm font-medium text-primary-foreground"
-            >
-              Add to pantry
-            </button>
-          </div>
-        )}
-      </BottomSheet>
-
       {/* Error sheet */}
       <BottomSheet open={!!error} onClose={() => setError(null)} title={error?.title}>
         {error && (
@@ -407,7 +461,7 @@ function ScanPage() {
                   onClick={() => setError(null)}
                   className="flex items-center justify-center gap-2 rounded-2xl bg-secondary py-3 text-sm font-medium text-secondary-foreground"
                 >
-                  <KeyRound className="h-4 w-4" /> Open Settings
+                  Open Settings
                 </Link>
               )}
               {error.retry && (

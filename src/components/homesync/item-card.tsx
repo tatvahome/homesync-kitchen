@@ -29,6 +29,9 @@ export function ItemCard({ item, expanded, onToggle, onConsume, onEdit }: ItemCa
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{item.name}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">
+            {item.quantity} {item.unit} · ₹{item.price}
+          </p>
         </div>
         <div className="flex items-center gap-1.5 text-sm tabular-nums text-muted-foreground">
           <StatusDot status={item.status} />

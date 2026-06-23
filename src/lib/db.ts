@@ -191,6 +191,26 @@ export async function consumeItem(id: string, mode: "consumed" | "discarded" = "
   });
 }
 
+// Consume a partial amount. If the remaining quantity hits zero (or below),
+// the item is deleted; otherwise its quantity is decremented.
+export async function consumePartial(id: string, amount: number) {
+  const item = await db().items.get(id);
+  if (!item) return;
+  const remaining = Math.max(0, Number((item.quantity - amount).toFixed(3)));
+  await db().transaction("rw", db().items, db().activity, async () => {
+    if (remaining <= 0) {
+      await db().items.delete(id);
+    } else {
+      await db().items.update(id, { quantity: remaining });
+    }
+    await logActivity({
+      itemId: id,
+      text: `${item.name} — ${amount}${item.unit} consumed${remaining > 0 ? ` (${remaining}${item.unit} left)` : ""}`,
+      kind: "consumed",
+    });
+  });
+}
+
 export async function updateItem(id: string, patch: Partial<DbItem>) {
   await db().items.update(id, patch);
   if (patch.name) {

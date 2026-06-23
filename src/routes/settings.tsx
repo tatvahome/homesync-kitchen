@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/homesync/app-shell";
 import { cn } from "@/lib/utils";
-import { Bell, Ruler, Download, KeyRound, Clock } from "lucide-react";
+import { Bell, Ruler, Download, Clock } from "lucide-react";
 import { useSetting } from "@/hooks/use-setting";
 import { SETTING_KEYS, db } from "@/lib/db";
 
@@ -67,7 +67,6 @@ function SettingsPage() {
   const [unit, setUnit] = useSetting(SETTING_KEYS.defaultUnit, "kg");
   const [push, setPush] = useSetting(SETTING_KEYS.notifPush, "true");
   const [email, setEmail] = useSetting(SETTING_KEYS.notifEmail, "false");
-  const [apiKey, setApiKey] = useSetting(SETTING_KEYS.geminiKey, "");
 
   const clearAll = async () => {
     if (!confirm("Clear all pantry data?")) return;
@@ -152,29 +151,6 @@ function SettingsPage() {
               </button>
             }
           />
-        </Section>
-
-        <Section title="AI">
-          <div className="px-4 py-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                <KeyRound className="h-4 w-4" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Gemini API key</p>
-                <p className="text-xs text-muted-foreground">
-                  {apiKey ? "Stored locally on this device" : "Required for scanning"}
-                </p>
-              </div>
-            </div>
-            <input
-              value={apiKey}
-              onChange={e => void setApiKey(e.target.value)}
-              type="password"
-              placeholder="AIza…"
-              className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-secondary"
-            />
-          </div>
         </Section>
       </div>
     </AppShell>

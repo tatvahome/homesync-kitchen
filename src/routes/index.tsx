@@ -20,13 +20,6 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
-
 function HomePage() {
   const items = usePantryItems();
   const activity = useActivity(4);
@@ -34,6 +27,7 @@ function HomePage() {
   const nudges = useNudges(Number(reminderDaysStr) || 3);
   const [bannerHidden, setBannerHidden] = useState(false);
   const [today, setToday] = useState("");
+  const [greeting, setGreeting] = useState("Hello");
   useEffect(() => {
     setToday(
       new Date().toLocaleDateString(undefined, {
@@ -42,6 +36,8 @@ function HomePage() {
         day: "numeric",
       }),
     );
+    const h = new Date().getHours();
+    setGreeting(h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
   }, []);
 
   const list = items ?? [];
@@ -56,7 +52,7 @@ function HomePage() {
       <header className="px-5 pt-10 pb-6">
         <p className="text-sm text-muted-foreground">{today}</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          {greeting()}.
+          {greeting}.
         </h1>
       </header>
 
