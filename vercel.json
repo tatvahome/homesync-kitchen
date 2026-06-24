@@ -2,19 +2,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".output/public",
   "framework": null,
-  "functions": {
-    ".output/server/**/*.mjs": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "routes": [
     {
-      "src": "/_server/(.*)",
+      "src": "/api/(.*)",
       "dest": "/.output/server/index.mjs"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/.output/public/$1"
+      "dest": "/.output/server/index.mjs"
     }
   ]
 }
