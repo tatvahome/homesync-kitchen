@@ -109,6 +109,7 @@ function ScanPage() {
 
   const [capturing, setCapturing] = useState(false);
   const [captureDone, setCaptureDone] = useState(false);
+  const [savingItem, setSavingItem] = useState(false);
 
   async function handleCapture() {
     if (capturing) return; // double-tap guard
