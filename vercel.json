@@ -1,3 +1,20 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "buildCommand": "npm run build",
+  "outputDirectory": ".output/public",
+  "framework": null,
+  "functions": {
+    ".output/server/**/*.mjs": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/_server/(.*)",
+      "dest": "/.output/server/index.mjs"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/.output/public/$1"
+    }
+  ]
 }
