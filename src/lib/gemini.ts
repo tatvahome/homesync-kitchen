@@ -1,9 +1,7 @@
-// Client-side Gemini multimodal client. Calls Google's Generative Language API
-// directly from the browser. The API key lives in IndexedDB (see ./db.ts).
-// Free-tier friendly model: gemini-2.5-flash (multimodal, supports vision).
-
-// Gemini 3.1 Flash Lite — higher free-tier rate limits, multimodal-capable.
+// Client-side Gemini multimodal client. The key is shipped with the app so
+// every install works out of the box — no per-user setup needed.
 const MODEL = "gemini-flash-lite-latest";
+export const GEMINI_API_KEY = "AQ.Ab8RN6J0j7Oag0H5sbbNfPIaM2Mq9kWPqYPJB4gX_lM9QEoCDg";
 const ENDPOINT = (key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
 
