@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, Camera, Check, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { BottomSheet } from "@/components/homesync/bottom-sheet";
 import { ReceiptReview } from "@/components/homesync/receipt-review";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useSetting } from "@/hooks/use-setting";
-import { addItemFromScan, bulkAddItems, SETTING_KEYS } from "@/lib/db";
+import { useOnline } from "@/hooks/use-online";
+import { addItemFromScan, bulkAddItems } from "@/lib/db";
 import {
   GeminiError,
+  GEMINI_API_KEY,
   scanReceipt,
   scanSingleItem,
   type ReceiptResult,
@@ -34,7 +35,8 @@ interface ErrorState {
 function ScanPage() {
   const navigate = useNavigate();
   const haptic = useHaptics();
-  const [apiKey] = useSetting(SETTING_KEYS.geminiKey, "");
+  const apiKey = GEMINI_API_KEY;
+  const online = useOnline();
 
   const [mode, setMode] = useState<Mode>("single");
   const [stage, setStage] = useState<Stage>("camera");
@@ -105,25 +107,29 @@ function ScanPage() {
     return canvas.toDataURL("image/jpeg", 0.92);
   }
 
+  const [capturing, setCapturing] = useState(false);
+  const [captureDone, setCaptureDone] = useState(false);
+  const [savingItem, setSavingItem] = useState(false);
+
   async function handleCapture() {
+    if (capturing) return; // double-tap guard
     haptic("light");
-    if (!apiKey) {
+    if (!online) {
       setError({
-        title: "No Gemini key yet",
-        message:
-          "Add your Gemini API key in Settings so homeSync can recognize what you're scanning.",
-        showKeyLink: true,
+        title: "You're offline",
+        message: "Scanning needs a network connection. Your pantry still works offline.",
       });
       return;
     }
+    setCapturing(true);
     const img = captureFrame();
     if (!img) {
+      setCapturing(false);
       setError({ title: "Couldn't capture", message: "Camera frame wasn't ready. Try again.", retry: handleCapture });
       return;
     }
     setCapturedImage(img);
     stopCamera();
-    setStage("analyzing");
     try {
       if (mode === "single") {
         const result = await scanSingleItem(apiKey, img);
@@ -133,17 +139,23 @@ function ScanPage() {
         setFormUnit(result.suggestedUnit || "pc");
         setFormPrice("");
         setFormDays(String(result.estimatedShelfDays ?? 7));
+        setCaptureDone(true);
         setStage("single-result");
         haptic("success");
       } else {
+        setStage("analyzing"); // show receipt skeleton
         const result = await scanReceipt(apiKey, img);
         setReceiptResult(result);
+        setCaptureDone(true);
         setStage("receipt-result");
         haptic("success");
       }
     } catch (e) {
       haptic("error");
       handleScanError(e);
+    } finally {
+      setCapturing(false);
+      setTimeout(() => setCaptureDone(false), 600);
     }
   }
 
@@ -172,6 +184,8 @@ function ScanPage() {
 
   async function confirmSingle(name: string) {
     if (!singleResult || !capturedImage) return;
+    if (savingItem) return;
+    setSavingItem(true);
     const qtyNum = Number(formQty) || 1;
     const priceNum = Number(formPrice) || 0;
     const daysNum = Number(formDays) || 7;
@@ -298,10 +312,17 @@ function ScanPage() {
               <div className="fixed inset-x-0 bottom-[max(2rem,env(safe-area-inset-bottom))] z-20 flex justify-center">
                 <button
                   onClick={handleCapture}
-                  className="flex h-20 w-20 items-center justify-center rounded-full bg-background ring-4 ring-background/30 active:scale-95"
+                  disabled={capturing}
+                  className="flex h-20 w-20 items-center justify-center rounded-full bg-background ring-4 ring-background/30 transition active:scale-95 disabled:active:scale-100"
                   aria-label="Capture"
                 >
-                  <span className="h-14 w-14 rounded-full bg-secondary" />
+                  {capturing ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-secondary" />
+                  ) : captureDone ? (
+                    <Check className="h-8 w-8 text-secondary" />
+                  ) : (
+                    <span className="h-14 w-14 rounded-full bg-secondary" />
+                  )}
                 </button>
               </div>
             </>
@@ -309,16 +330,30 @@ function ScanPage() {
         </>
       )}
 
-      {/* Analyzing */}
+      {/* Analyzing — receipt skeleton */}
       {stage === "analyzing" && (
-        <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background text-foreground">
-          {capturedImage && (
-            <img src={capturedImage} alt="captured" className="h-40 w-40 rounded-2xl object-cover opacity-70" />
-          )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>{mode === "single" ? "Identifying item…" : "Reading receipt…"}</span>
+        <div className="min-h-dvh bg-background px-5 pb-10 pt-16 text-foreground">
+          <div className="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-secondary">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading receipt…
           </div>
+          <h2 className="mb-4 font-display text-2xl font-semibold">Review items</h2>
+          <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span className="h-3 w-24 animate-pulse rounded bg-muted" />
+            <span className="h-3 w-20 animate-pulse rounded bg-muted" />
+          </div>
+          <ul className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <li key={i} className="rounded-2xl border border-border/60 bg-card p-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 h-6 w-6 shrink-0 animate-pulse rounded-md bg-muted" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-3.5 w-2/3 animate-pulse rounded bg-muted" />
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-muted/70" />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
